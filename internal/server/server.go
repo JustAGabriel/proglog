@@ -68,8 +68,8 @@ func (s *server) GetRecord(w http.ResponseWriter, r *http.Request) {
 func NewHTTPServer(addr string) *http.Server {
 	server := newHTTPServer()
 	r := mux.NewRouter()
-	r.HandleFunc("/api/v1/records/", server.CreateNewRecord).Methods("POST")
-	r.HandleFunc("/api/v1/records/", server.GetRecord).Methods("GET")
+	r.HandleFunc("/api/v1/records", server.CreateNewRecord).Methods("POST")
+	r.HandleFunc("/api/v1/records", server.GetRecord).Methods("GET")
 	return &http.Server{
 		Addr:    addr,
 		Handler: r,

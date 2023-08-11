@@ -28,10 +28,10 @@ func newStore(f *os.File) (*store, error) {
 		return nil, err
 	}
 
-	size := uint(fi.Size())
+	size := uint64(fi.Size())
 	return &store{
 		File: f,
-		size: uint64(size),
+		size: size,
 		buf:  bufio.NewWriter(f),
 	}, nil
 }

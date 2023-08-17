@@ -1,77 +1,91 @@
 package server
 
 import (
-	"encoding/json"
-	"net/http"
+	"context"
 
-	"github.com/gorilla/mux"
+	api "github.com/justagabriel/proglog/api/v1"
+	"github.com/justagabriel/proglog/internal/server"
 )
 
-type server struct {
-	Log *Log
+type CommitLog interface {
+	Append(*api.Record) (uint64, error)
+	Read(uint64) (*api.Record, error)
 }
 
-func newHTTPServer() *server {
-	return &server{
-		Log: NewLog(),
+type Config struct {
+	CommitLog CommitLog
+}
+
+type grpcServer struct {
+	api.UnimplementedLogServer
+	*Config
+}
+
+func newGRPCServer(config *Config) (*grpcServer, error) {
+	srv := &grpcServer{
+		Config: config,
+	}
+	return srv, nil
+}
+
+var _ api.LogServer = (*grpcServer)(nil)
+
+func (s *grpcServer) CreateNewRecord(ctx context.Context, req *api.CreateRecordRequest) (*api.CreateRecordResponse, error) {
+	offset, err := s.CommitLog.Append(req.Record)
+	if err != nil {
+		return nil, err
+	}
+	return &api.CreateRecordResponse{Offset: offset}, nil
+}
+
+func (s *grpcServer) GetRecord(ctx context.Context, req *api.GetRecordRequest) (*api.GetRecordResponse, error) {
+	rec, err := s.CommitLog.Read(req.GetOffset())
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.GetRecordResponse{Record: rec}, nil
+}
+
+func (s *grpcServer) CreateRecordStream(stream api.Log_CreateStreamServer) error {
+	for {
+		req, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		res, err := s.CreateNewRecord(stream.Context(), req)
+		if err != nil {
+			return err
+		}
+
+		err = stream.Send(res)
+		if err != nil {
+			return err
+		}
 	}
 }
 
-func (s *server) CreateNewRecord(w http.ResponseWriter, r *http.Request) {
-	var req CreateRecordRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+func (s *grpcServer) GetRecordStream(req *api.GetRecordRequest, stream api.Log_GetStreamServer) error {
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		default:
+			res, err := s.GetRecord(stream.Context(), req)
+			switch err.(type) {
+			case nil:
+			case server.ErrOffsetNotFound:
+				continue
+			default:
+				return err
+			}
 
-	off, err := s.Log.Append(req.Record)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	res := CreateRecordResponse{Offset: off}
-	err = json.NewEncoder(w).Encode(res)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-}
-
-func (s *server) GetRecord(w http.ResponseWriter, r *http.Request) {
-	var req GetRecordRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	record, err := s.Log.Read(req.Offset)
-	if err == ErrOffsetNotFound {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	res := GetRecordResponse{Record: record}
-	err = json.NewEncoder(w).Encode(res)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-}
-
-func NewHTTPServer(addr string) *http.Server {
-	server := newHTTPServer()
-	r := mux.NewRouter()
-	r.HandleFunc("/api/v1/records", server.CreateNewRecord).Methods("POST")
-	r.HandleFunc("/api/v1/records", server.GetRecord).Methods("GET")
-	return &http.Server{
-		Addr:    addr,
-		Handler: r,
+			err = stream.Send(res)
+			if err != nil {
+				return err
+			}
+			req.Offset++
+		}
 	}
 }

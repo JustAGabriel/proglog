@@ -8,3 +8,26 @@ message Record {
     bytes value = 1;
     uint64 offset = 2;
 }
+
+message CreateRecordRequest {
+	Record record = 1;
+}
+
+message CreateRecordResponse {
+    uint64 offset = 1;
+}
+
+message GetRecordRequest {
+    uint64 offset = 1;
+}
+
+message GetRecordResponse {
+	Record record = 1;
+}
+
+service Log {
+    rpc Create(CreateRecordRequest) returns (CreateRecordResponse) {}
+    rpc CreateStream(stream CreateRecordRequest) returns (stream CreateRecordResponse){}
+    rpc Get(GetRecordRequest) returns (GetRecordResponse){}
+    rpc GetStream(stream GetRecordRequest) returns (stream GetRecordResponse){}
+}

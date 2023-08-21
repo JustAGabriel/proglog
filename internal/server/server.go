@@ -4,7 +4,6 @@ import (
 	"context"
 
 	api "github.com/justagabriel/proglog/api/v1"
-	"github.com/justagabriel/proglog/internal/server"
 )
 
 type CommitLog interface {
@@ -75,7 +74,7 @@ func (s *grpcServer) GetRecordStream(req *api.GetRecordRequest, stream api.Log_G
 			res, err := s.GetRecord(stream.Context(), req)
 			switch err.(type) {
 			case nil:
-			case server.ErrOffsetNotFound:
+			case api.ErrOffsetOutOfRange:
 				continue
 			default:
 				return err

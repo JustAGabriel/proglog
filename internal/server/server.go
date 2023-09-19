@@ -30,7 +30,7 @@ func newGRPCServer(config *Config) (*grpcServer, error) {
 
 var _ api.LogServer = (*grpcServer)(nil)
 
-func (s *grpcServer) CreateNewRecord(ctx context.Context, req *api.CreateRecordRequest) (*api.CreateRecordResponse, error) {
+func (s *grpcServer) Create(ctx context.Context, req *api.CreateRecordRequest) (*api.CreateRecordResponse, error) {
 	offset, err := s.CommitLog.Append(req.Record)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func (s *grpcServer) CreateNewRecord(ctx context.Context, req *api.CreateRecordR
 	return &api.CreateRecordResponse{Offset: offset}, nil
 }
 
-func (s *grpcServer) GetRecord(ctx context.Context, req *api.GetRecordRequest) (*api.GetRecordResponse, error) {
+func (s *grpcServer) Get(ctx context.Context, req *api.GetRecordRequest) (*api.GetRecordResponse, error) {
 	rec, err := s.CommitLog.Read(req.GetOffset())
 	if err != nil {
 		return nil, err
@@ -47,14 +47,14 @@ func (s *grpcServer) GetRecord(ctx context.Context, req *api.GetRecordRequest) (
 	return &api.GetRecordResponse{Record: rec}, nil
 }
 
-func (s *grpcServer) CreateRecordStream(stream api.Log_CreateStreamServer) error {
+func (s *grpcServer) CreateStream(stream api.Log_CreateStreamServer) error {
 	for {
 		req, err := stream.Recv()
 		if err != nil {
 			return err
 		}
 
-		res, err := s.CreateNewRecord(stream.Context(), req)
+		res, err := s.Create(stream.Context(), req)
 		if err != nil {
 			return err
 		}
@@ -66,13 +66,18 @@ func (s *grpcServer) CreateRecordStream(stream api.Log_CreateStreamServer) error
 	}
 }
 
-func (s *grpcServer) GetRecordStream(req *api.GetRecordRequest, stream api.Log_GetStreamServer) error {
+func (s *grpcServer) GetStream(stream api.Log_GetStreamServer) error {
 	for {
 		select {
 		case <-stream.Context().Done():
 			return nil
 		default:
-			res, err := s.GetRecord(stream.Context(), req)
+			req, err := stream.Recv()
+			if err != nil {
+				return err
+			}
+
+			res, err := s.Get(stream.Context(), req)
 			switch err.(type) {
 			case nil:
 			case api.ErrOffsetOutOfRange:

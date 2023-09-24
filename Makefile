@@ -1,4 +1,4 @@
-CONFIG_PATH=${HOME}/.proglog/
+CONFIG_PATH=./certs/
 
 .PHONY: init
 init: 
@@ -6,6 +6,7 @@ init:
 
 .PHONY: gencert
 gencert:
+	$(MAKE) init
 	cfssl gencert \
 		-initca test/ca-csr.json | cfssljson -bare ca
 	cfssl gencert \

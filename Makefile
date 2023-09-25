@@ -1,4 +1,4 @@
-CONFIG_PATH=./certs/
+CONFIG_PATH=./test/cert/
 
 .PHONY: init
 init: 

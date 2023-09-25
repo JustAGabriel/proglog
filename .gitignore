@@ -1,5 +1,5 @@
 # project items
-/certs/**
+test/certs/**
 proglog
 
 # non project items

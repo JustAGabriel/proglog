@@ -30,5 +30,5 @@ func configFile(filename string) string {
 	}
 
 	absProjectRoot := splits[0]
-	return filepath.Join(absProjectRoot, "certs", filename)
+	return filepath.Join(absProjectRoot, "test", "cert", filename)
 }

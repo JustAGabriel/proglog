@@ -11,7 +11,9 @@ import (
 	"github.com/justagabriel/proglog/internal/log"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -191,4 +193,43 @@ func testCreateGetStream(t *testing.T, client api.LogClient, config *Config) {
 			Offset: uint64(i),
 		})
 	}
+}
+
+func TestServerRequiresClientTLSCert(t *testing.T) {
+	// arrange
+	l, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
+
+	serverTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
+		CertFile:      config.ServerCertFile,
+		KeyFile:       config.ServerKeyFile,
+		CAFile:        config.CAFile,
+		ServerAddress: l.Addr().String(),
+		Server:        true,
+	})
+	require.NoError(t, err)
+	serverCreds := credentials.NewTLS(serverTLSConfig)
+
+	dir := internal.GetTempDir("server-test")
+	clog, err := log.NewLog(dir, log.Config{})
+	require.NoError(t, err)
+
+	cfg := &Config{
+		CommitLog: clog,
+	}
+	server, err := NewGRPCServer(cfg, grpc.Creds(serverCreds))
+	require.NoError(t, err)
+
+	go func() {
+		server.Serve(l)
+	}()
+
+	credsWithoutTLSCert := grpc.WithTransportCredentials(insecure.NewCredentials())
+
+	// act
+	clientConnection, err := grpc.Dial(l.Addr().String(), credsWithoutTLSCert)
+
+	// assert
+	require.NoError(t, err, "the connection it self should work, only the auth should fail.")
+	require.NotEqual(t, clientConnection.GetState(), connectivity.Ready, "should be unable to connect due to missing TLS cert")
 }

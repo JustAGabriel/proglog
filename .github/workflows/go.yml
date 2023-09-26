@@ -23,5 +23,18 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Download Dependencies
+        run: |
+          go install github.com/cloudflare/cfssl/cmd/cfssl
+          go install github.com/cloudflare/cfssl/cmd/cfssljson
+
+      - name: Generate TLS Certs
+        run: make gencert
+
+      - name: print structure
+        run: |
+          sudo apt-get install tree
+          tree -L 2
+
       - name: Run Tests
         run: make test

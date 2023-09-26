@@ -44,6 +44,7 @@ func setupTest(t *testing.T, fn func(*Config)) (client api.LogClient, cfg *Confi
 		KeyFile:       config.ServerKeyFile,
 		CAFile:        config.CAFile,
 		ServerAddress: l.Addr().String(),
+		Server:        true,
 	})
 	require.NoError(t, err)
 	serverCreds := credentials.NewTLS(serverTLSConfig)
@@ -66,7 +67,9 @@ func setupTest(t *testing.T, fn func(*Config)) (client api.LogClient, cfg *Confi
 	}()
 
 	clientTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
-		CAFile: config.CAFile,
+		CertFile: config.ClientCertFile,
+		KeyFile:  config.ClientKeyFile,
+		CAFile:   config.CAFile,
 	})
 	require.NoError(t, err)
 
@@ -230,6 +233,8 @@ func TestServerRequiresClientTLSCert(t *testing.T) {
 	clientConnection, err := grpc.Dial(l.Addr().String(), credsWithoutTLSCert)
 
 	// assert
+	state := clientConnection.GetState().String()
+	println(state)
 	require.NoError(t, err, "the connection it self should work, only the auth should fail.")
 	require.NotEqual(t, clientConnection.GetState(), connectivity.Ready, "should be unable to connect due to missing TLS cert")
 }

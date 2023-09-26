@@ -28,5 +28,13 @@ jobs:
           go install github.com/cloudflare/cfssl/cmd/cfssl
           go install github.com/cloudflare/cfssl/cmd/cfssljson
 
-      - name: Test
-        run: make gencert && make test
+      - name: Generate TLS Certs
+        run: make gencert
+
+      - name: print structure
+        run: |
+          sudo apt-get install tree
+          tree -L 2
+        
+      - name: Run Tests
+        run: make test

@@ -9,6 +9,8 @@ require (
 )
 
 require (
+	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
+	github.com/casbin/casbin/v2 v2.77.2 // indirect
 	github.com/cloudflare/cfssl v1.6.4 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
@@ -20,6 +22,9 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.1 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/weppos/publicsuffix-go v0.15.1-0.20210511084619-b1f36a2d6c0b // indirect
 	github.com/zmap/zcrypto v0.0.0-20210511125630-18f1e0152cfc // indirect
 	github.com/zmap/zlint/v3 v3.1.0 // indirect

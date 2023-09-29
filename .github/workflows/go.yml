@@ -23,10 +23,5 @@ jobs:
       - name: Build
         run: go build -v ./...
 
-      - name: Download Dependencies
-        run: |
-          go install github.com/cloudflare/cfssl/cmd/cfssl
-          go install github.com/cloudflare/cfssl/cmd/cfssljson
-
-      - name: Test
-        run: make gencert && make test
+      - name: Run Tests
+        run: make test

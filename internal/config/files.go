@@ -12,9 +12,9 @@ var (
 	ServerCertFile       = configFile("cert", "server.pem")
 	ServerKeyFile        = configFile("cert", "server-key.pem")
 	RootClientCertFile   = configFile("cert", "root-client.pem")
-	RootClientKeyFile    = configFile("root-client-key.pem")
-	NobodyClientCertFile = configFile("nobody-client.pem")
-	NobodyClientKeyFile  = configFile("nobody-client-key.pem")
+	RootClientKeyFile    = configFile("cert", "root-client-key.pem")
+	NobodyClientCertFile = configFile("cert", "nobody-client.pem")
+	NobodyClientKeyFile  = configFile("cert", "nobody-client-key.pem")
 )
 
 type PathExtractionFailed struct {

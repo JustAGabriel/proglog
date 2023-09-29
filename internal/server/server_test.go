@@ -18,7 +18,7 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	scenarios := map[string]func(t *testing.T, client api.LogClient, config *Config){
+	scenarios := map[string]func(t *testing.T, authorizedClient api.LogClient, unauthorizedClient api.LogClient, config *Config){
 		"create/get a message from/to the log succeeds": testCreateGet,
 		"consume past log boundary fails":               testGetPastBoundary,
 		"create/get a stream succeeds":                  testCreateGetStream,
@@ -26,14 +26,14 @@ func TestServer(t *testing.T) {
 
 	for title, scenario := range scenarios {
 		t.Run(title, func(t *testing.T) {
-			client, config, teardown := setupTest(t, nil)
+			authorizedClient, unauthorizedClient, config, teardown := setupTest(t, nil)
 			defer teardown()
-			scenario(t, client, config)
+			scenario(t, authorizedClient, unauthorizedClient, config)
 		})
 	}
 }
 
-func setupTest(t *testing.T, fn func(*Config)) (client api.LogClient, cfg *Config, teardown func()) {
+func setupTest(t *testing.T, fn func(*Config)) (rootClient api.LogClient, nobodyClient api.LogClient, cfg *Config, teardown func()) {
 	t.Helper()
 
 	l, err := net.Listen("tcp", "localhost:0")
@@ -66,34 +66,43 @@ func setupTest(t *testing.T, fn func(*Config)) (client api.LogClient, cfg *Confi
 		server.Serve(l)
 	}()
 
-	clientTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
-		CertFile: config.ClientCertFile,
-		KeyFile:  config.ClientKeyFile,
-		CAFile:   config.CAFile,
-	})
-	require.NoError(t, err)
+	newClient := func(crtPath, keyPath string) (*grpc.ClientConn, api.LogClient, []grpc.DialOption) {
+		clientTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
+			CertFile: config.RootClientCertFile,
+			KeyFile:  config.RootClientKeyFile,
+			CAFile:   config.CAFile,
+		})
+		require.NoError(t, err)
 
-	clientCreds := credentials.NewTLS(clientTLSConfig)
-	cc, err := grpc.Dial(l.Addr().String(), grpc.WithTransportCredentials(clientCreds))
-	require.NoError(t, err)
+		clientCreds := credentials.NewTLS(clientTLSConfig)
+		opts := []grpc.DialOption{grpc.WithTransportCredentials(clientCreds)}
+		cc, err := grpc.Dial(l.Addr().String(), opts...)
+		require.NoError(t, err)
 
-	client = api.NewLogClient(cc)
-	return client, cfg, func() {
+		client := api.NewLogClient(cc)
+		return cc, client, opts
+	}
+
+	rootConn, rootClient, _ := newClient(config.RootClientCertFile, config.RootClientKeyFile)
+	nobodyConn, nobodyClient, _ := newClient(config.NobodyClientCertFile, config.NobodyClientKeyFile)
+
+	return rootClient, nobodyClient, cfg, func() {
 		server.Stop()
-		cc.Close()
+		rootConn.Close()
+		nobodyConn.Close()
 		l.Close()
 		clog.Remove()
 	}
 }
 
-func testCreateGet(t *testing.T, client api.LogClient, config *Config) {
+func testCreateGet(t *testing.T, authorizedClient api.LogClient, unauthorizedClient api.LogClient, config *Config) {
 	// arrange
 	ctx := context.Background()
 	want := &api.Record{
 		Value: []byte("hello world"),
 	}
 
-	createResp, err := client.Create(
+	createResp, err := authorizedClient.Create(
 		ctx,
 		&api.CreateRecordRequest{
 			Record: want,
@@ -106,7 +115,7 @@ func testCreateGet(t *testing.T, client api.LogClient, config *Config) {
 	}
 
 	// act
-	getResp, err := client.Get(ctx, getReq)
+	getResp, err := authorizedClient.Get(ctx, getReq)
 
 	// assert
 	require.NoError(t, err)
@@ -114,7 +123,7 @@ func testCreateGet(t *testing.T, client api.LogClient, config *Config) {
 	require.Equal(t, want.Offset, getResp.Record.Offset)
 }
 
-func testGetPastBoundary(t *testing.T, client api.LogClient, config *Config) {
+func testGetPastBoundary(t *testing.T, authorizedClient api.LogClient, authorizedclient api.LogClient, config *Config) {
 	// arrange
 	ctx := context.Background()
 
@@ -123,7 +132,7 @@ func testGetPastBoundary(t *testing.T, client api.LogClient, config *Config) {
 			Value: []byte("hello world!"),
 		},
 	}
-	createResp, err := client.Create(ctx, createReq)
+	createResp, err := authorizedClient.Create(ctx, createReq)
 	require.NoError(t, err)
 
 	getReq := &api.GetRecordRequest{
@@ -131,7 +140,7 @@ func testGetPastBoundary(t *testing.T, client api.LogClient, config *Config) {
 	}
 
 	// act
-	getResp, err := client.Get(ctx, getReq)
+	getResp, err := authorizedClient.Get(ctx, getReq)
 
 	// assert
 	if getResp != nil {
@@ -145,7 +154,7 @@ func testGetPastBoundary(t *testing.T, client api.LogClient, config *Config) {
 	}
 }
 
-func testCreateGetStream(t *testing.T, client api.LogClient, config *Config) {
+func testCreateGetStream(t *testing.T, authorizedClient api.LogClient, unauthorizedclient api.LogClient, config *Config) {
 	// arrange
 	ctx := context.Background()
 
@@ -161,7 +170,7 @@ func testCreateGetStream(t *testing.T, client api.LogClient, config *Config) {
 	}
 
 	// act
-	stream, err := client.CreateStream(ctx)
+	stream, err := authorizedClient.CreateStream(ctx)
 
 	// assert
 	require.NoError(t, err)
@@ -181,7 +190,7 @@ func testCreateGetStream(t *testing.T, client api.LogClient, config *Config) {
 	}
 
 	// act
-	getStream, err := client.GetStream(ctx)
+	getStream, err := authorizedClient.GetStream(ctx)
 
 	// assert
 	require.NoError(t, err)

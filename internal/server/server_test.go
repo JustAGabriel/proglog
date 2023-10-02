@@ -11,6 +11,7 @@ import (
 	"github.com/justagabriel/proglog/internal/log"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -22,6 +23,7 @@ func TestServer(t *testing.T) {
 		"create/get a message from/to the log succeeds": testCreateGet,
 		"consume past log boundary fails":               testGetPastBoundary,
 		"create/get a stream succeeds":                  testCreateGetStream,
+		"unauthorized client is not served":             testUnauthorized,
 	}
 
 	for title, scenario := range scenarios {
@@ -204,6 +206,39 @@ func testCreateGetStream(t *testing.T, authorizedClient api.LogClient, unauthori
 			Value:  record.Value,
 			Offset: uint64(i),
 		})
+	}
+}
+
+func testUnauthorized(t *testing.T, authorizedClient api.LogClient, unauthorizedClient api.LogClient, config *Config) {
+	const wantCode = codes.PermissionDenied
+
+	ctx := context.Background()
+	createResp, err := unauthorizedClient.Create(ctx, &api.CreateRecordRequest{
+		Record: &api.Record{
+			Value: []byte("hello world"),
+		},
+	})
+
+	if createResp != nil {
+		t.Fatalf("create request, response should be nil")
+	}
+
+	gotCode := status.Code(err)
+	if gotCode != wantCode {
+		t.Fatalf("(create request) got code: %d, want: %d", gotCode, wantCode)
+	}
+
+	getResp, err := unauthorizedClient.Get(ctx, &api.GetRecordRequest{
+		Offset: 0,
+	})
+
+	if getResp != nil {
+		t.Fatalf("'get' request, response should be nil")
+	}
+
+	gotCode = status.Code(err)
+	if gotCode != wantCode {
+		t.Fatalf("(get request)got code: %d, want: %d", gotCode, wantCode)
 	}
 }
 

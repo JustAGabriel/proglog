@@ -5,6 +5,16 @@ import (
 
 	api "github.com/justagabriel/proglog/api/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
+)
+
+const (
+	objectWildcard string = "*"
+	createAction   string = "create"
+	getAction      string = "get"
 )
 
 type CommitLog interface {
@@ -12,8 +22,13 @@ type CommitLog interface {
 	Read(uint64) (*api.Record, error)
 }
 
+type Authorizer interface {
+	Authorize(subject, object, action string) error
+}
+
 type Config struct {
-	CommitLog CommitLog
+	CommitLog  CommitLog
+	Authorizer Authorizer
 }
 
 type grpcServer struct {
@@ -30,7 +45,32 @@ func newGRPCServer(config *Config) (*grpcServer, error) {
 
 var _ api.LogServer = (*grpcServer)(nil)
 
+type subjectContextKey struct{}
+
+func authenticate(ctx context.Context) (context.Context, error) {
+	peer, ok := peer.FromContext(ctx)
+	if !ok {
+		return ctx, status.New(codes.Unknown, "couldn't find peer info").Err()
+	}
+
+	if peer.AuthInfo == nil {
+		return context.WithValue(ctx, subjectContextKey{}, ""), nil
+	}
+
+	tlsInfo := peer.AuthInfo.(credentials.TLSInfo)
+	subject := tlsInfo.State.VerifiedChains[0][0].Subject.CommonName
+	ctx = context.WithValue(ctx, subjectContextKey{}, subject)
+	return ctx, nil
+}
+
+func subject(ctx context.Context) string {
+	return ctx.Value(subjectContextKey{}).(string)
+}
+
 func (s *grpcServer) Create(ctx context.Context, req *api.CreateRecordRequest) (*api.CreateRecordResponse, error) {
+	if err := s.Authorizer.Authorize(subject(ctx), objectWildcard, createAction); err != nil {
+		return nil, err
+	}
 	offset, err := s.CommitLog.Append(req.Record)
 	if err != nil {
 		return nil, err
@@ -96,6 +136,10 @@ func (s *grpcServer) GetStream(stream api.Log_GetStreamServer) error {
 }
 
 func NewGRPCServer(config *Config, opts ...grpc.ServerOption) (*grpc.Server, error) {
+	// todo: implement auth middleware usage!
+	authMiddleware := grpc.StreamInterceptor(
+		grpc_middleware.ChainStreamServer(grpc_auth.StreamServerINterceptor(authenticate())),
+	)
 	gsrv := grpc.NewServer(opts...)
 	srv, err := newGRPCServer(config)
 	if err != nil {

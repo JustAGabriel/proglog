@@ -15,6 +15,8 @@ var (
 	RootClientKeyFile    = configFile("cert", "root-client-key.pem")
 	NobodyClientCertFile = configFile("cert", "nobody-client.pem")
 	NobodyClientKeyFile  = configFile("cert", "nobody-client-key.pem")
+	ACLModelFile         = configFile("model.conf")
+	ACLPolicyFile        = configFile("policy.csv")
 )
 
 type PathExtractionFailed struct {

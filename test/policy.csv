@@ -1,2 +1,2 @@
-p, root, *, create
-p, root, *, get
+p, root, create
+p, root, get

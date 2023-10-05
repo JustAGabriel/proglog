@@ -7,6 +7,7 @@ import (
 
 	api "github.com/justagabriel/proglog/api/v1"
 	"github.com/justagabriel/proglog/internal"
+	"github.com/justagabriel/proglog/internal/auth"
 	"github.com/justagabriel/proglog/internal/config"
 	"github.com/justagabriel/proglog/internal/log"
 	"github.com/stretchr/testify/require"
@@ -55,8 +56,12 @@ func setupTest(t *testing.T, fn func(*Config)) (rootClient api.LogClient, nobody
 	clog, err := log.NewLog(dir, log.Config{})
 	require.NoError(t, err)
 
+	authorizer, err := auth.New(config.ACLModelFile, config.ACLPolicyFile)
+	require.NoError(t, err)
+
 	cfg = &Config{
-		CommitLog: clog,
+		CommitLog:  clog,
+		Authorizer: authorizer,
 	}
 	if fn != nil {
 		fn(cfg)

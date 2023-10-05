@@ -23,14 +23,14 @@ func New(model, policy string) (*Authorizer, error) {
 	}, nil
 }
 
-func (a *Authorizer) Authorize(subject, object, action string) error {
-	isAllowed, err := a.enforcer.Enforce(subject, object, action)
+func (a *Authorizer) Authorize(subject, action string) error {
+	isAllowed, err := a.enforcer.Enforce(subject, action)
 	if err != nil {
 		return err
 	}
 
 	if !isAllowed {
-		msg := fmt.Sprintf("%q is not permitted to %q to %q", subject, action, object)
+		msg := fmt.Sprintf("%q is not permitted to %q", subject, action)
 		st := status.New(codes.PermissionDenied, msg)
 		return st.Err()
 	}

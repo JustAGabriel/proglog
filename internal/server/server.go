@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	api "github.com/justagabriel/proglog/api/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -12,9 +14,8 @@ import (
 )
 
 const (
-	objectWildcard string = "*"
-	createAction   string = "create"
-	getAction      string = "get"
+	createAction string = "create"
+	getAction    string = "get"
 )
 
 type CommitLog interface {
@@ -23,7 +24,7 @@ type CommitLog interface {
 }
 
 type Authorizer interface {
-	Authorize(subject, object, action string) error
+	Authorize(subject, action string) error
 }
 
 type Config struct {
@@ -68,7 +69,9 @@ func subject(ctx context.Context) string {
 }
 
 func (s *grpcServer) Create(ctx context.Context, req *api.CreateRecordRequest) (*api.CreateRecordResponse, error) {
-	if err := s.Authorizer.Authorize(subject(ctx), objectWildcard, createAction); err != nil {
+	subject := subject(ctx)
+	err := s.Authorizer.Authorize(subject, getAction)
+	if err != nil {
 		return nil, err
 	}
 	offset, err := s.CommitLog.Append(req.Record)
@@ -79,6 +82,11 @@ func (s *grpcServer) Create(ctx context.Context, req *api.CreateRecordRequest) (
 }
 
 func (s *grpcServer) Get(ctx context.Context, req *api.GetRecordRequest) (*api.GetRecordResponse, error) {
+	subject := subject(ctx)
+	err := s.Authorizer.Authorize(subject, getAction)
+	if err != nil {
+		return nil, err
+	}
 	rec, err := s.CommitLog.Read(req.GetOffset())
 	if err != nil {
 		return nil, err
@@ -136,10 +144,15 @@ func (s *grpcServer) GetStream(stream api.Log_GetStreamServer) error {
 }
 
 func NewGRPCServer(config *Config, opts ...grpc.ServerOption) (*grpc.Server, error) {
-	// todo: implement auth middleware usage!
 	authMiddleware := grpc.StreamInterceptor(
-		grpc_middleware.ChainStreamServer(grpc_auth.StreamServerINterceptor(authenticate())),
+		grpc_middleware.ChainStreamServer(
+			grpc_auth.StreamServerInterceptor(authenticate),
+		),
 	)
+
+	interceptor := grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(grpc_auth.UnaryServerInterceptor(authenticate)))
+
+	opts = append(opts, authMiddleware, interceptor)
 	gsrv := grpc.NewServer(opts...)
 	srv, err := newGRPCServer(config)
 	if err != nil {

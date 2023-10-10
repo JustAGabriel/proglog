@@ -2,8 +2,11 @@ package server
 
 import (
 	"context"
+	"flag"
 	"net"
+	"os"
 	"testing"
+	"time"
 
 	api "github.com/justagabriel/proglog/api/v1"
 	"github.com/justagabriel/proglog/internal"
@@ -11,6 +14,8 @@ import (
 	"github.com/justagabriel/proglog/internal/config"
 	"github.com/justagabriel/proglog/internal/log"
 	"github.com/stretchr/testify/require"
+	"go.opencensus.io/examples/exporter"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -18,6 +23,21 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
+
+var debug = flag.Bool("debug", false, "Enable observability for debugging.")
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	if *debug {
+		logger, err := zap.NewDevelopment()
+		if err != nil {
+			panic(err)
+		}
+		zap.ReplaceGlobals(logger)
+	}
+
+	os.Exit(m.Run())
+}
 
 func TestServer(t *testing.T) {
 	scenarios := map[string]func(t *testing.T, authorizedClient api.LogClient, unauthorizedClient api.LogClient, config *Config){
@@ -59,6 +79,24 @@ func setupTest(t *testing.T, fn func(*Config)) (rootClient api.LogClient, nobody
 	authorizer, err := auth.New(config.ACLModelFile, config.ACLPolicyFile)
 	require.NoError(t, err)
 
+	var telemetryExporter *exporter.LogExporter
+	if *debug {
+		metricsLogFile := internal.GetTempFile("", "metrics-*.log")
+		t.Logf("metrics log file: %q", metricsLogFile.Name())
+
+		tracesLogFile := internal.GetTempFile("", "traces-*.log")
+		t.Logf("traces log file: %q", metricsLogFile.Name())
+
+		telemetryExporter, err = exporter.NewLogExporter(exporter.Options{
+			ReportingInterval: time.Second,
+			MetricsLogFile:    metricsLogFile.Name(),
+			TracesLogFile:     tracesLogFile.Name(),
+		})
+		require.NoError(t, err)
+		err = telemetryExporter.Start()
+		require.NoError(t, err)
+	}
+
 	cfg = &Config{
 		CommitLog:  clog,
 		Authorizer: authorizer,
@@ -99,6 +137,12 @@ func setupTest(t *testing.T, fn func(*Config)) (rootClient api.LogClient, nobody
 		nobodyConn.Close()
 		l.Close()
 		clog.Remove()
+
+		if telemetryExporter != nil {
+			time.Sleep(1500 * time.Millisecond)
+			telemetryExporter.Stop()
+			telemetryExporter.Close()
+		}
 	}
 }
 

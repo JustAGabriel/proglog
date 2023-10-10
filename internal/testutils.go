@@ -2,10 +2,12 @@ package internal
 
 import (
 	"os"
+	"path"
 )
 
 func GetTempFile(dirName, filename string) *os.File {
-	f, err := os.CreateTemp(dirName, filename)
+	dir := path.Join("tmp", dirName)
+	f, err := os.CreateTemp(dir, filename)
 	if err != nil {
 		panic(err)
 	}
@@ -13,7 +15,7 @@ func GetTempFile(dirName, filename string) *os.File {
 }
 
 func GetTempDir(dirName string) string {
-	dirPath, err := os.MkdirTemp("", dirName)
+	dirPath, err := os.MkdirTemp("tmp", dirName)
 	if err != nil {
 		panic(err)
 	}

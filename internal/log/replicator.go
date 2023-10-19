@@ -86,7 +86,6 @@ func (r *Replicator) replicate(addr string, leave chan struct{}) {
 			}
 		}
 	}
-
 }
 
 func (r *Replicator) Leave(name string) error {

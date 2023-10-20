@@ -3,8 +3,10 @@ package internal
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"net"
 	"os"
 	"path"
+	"testing"
 )
 
 func randDirName() string {
@@ -43,4 +45,26 @@ func GetTempDir(dir string) string {
 		panic(err)
 	}
 	return dirPath
+}
+
+// FreePort returns an available port.
+func FreePort(t *testing.T) int {
+	for i := 0; i < 10; i++ {
+		l, err := net.Listen("tcp", "localhost:0")
+		if err != nil {
+			t.Logf("could not listen on free port: %v", err)
+			continue
+		}
+
+		err = l.Close()
+		if err != nil {
+			t.Logf("could not close listener: %v", err)
+			continue
+		}
+
+		return l.Addr().(*net.TCPAddr).Port
+	}
+
+	t.Error("could not determine a free port")
+	return -1
 }

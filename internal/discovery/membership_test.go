@@ -2,11 +2,11 @@ package discovery
 
 import (
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/serf/serf"
+	"github.com/justagabriel/proglog/internal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +42,7 @@ func TestMembership(t *testing.T) {
 
 func setupMember(t *testing.T, members []*Membership) ([]*Membership, *handler) {
 	id := len(members)
-	port := freePort(t)
+	port := internal.FreePort(t)
 	addr := fmt.Sprintf("%s:%d", "127.0.0.1", port)
 	tags := map[string]string{
 		"rpc_addr": addr,
@@ -90,25 +90,4 @@ func (h *handler) Leave(id string) error {
 		h.leaves <- id
 	}
 	return nil
-}
-
-func freePort(t *testing.T) int {
-	for i := 0; i < 10; i++ {
-		l, err := net.Listen("tcp", "localhost:0")
-		if err != nil {
-			t.Logf("could not listen on free port: %v", err)
-			continue
-		}
-
-		err = l.Close()
-		if err != nil {
-			t.Logf("could not close listener: %v", err)
-			continue
-		}
-
-		return l.Addr().(*net.TCPAddr).Port
-	}
-
-	t.Error("could not determine a free port")
-	return -1
 }

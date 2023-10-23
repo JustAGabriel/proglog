@@ -96,7 +96,7 @@ func (a *Agent) setupLog() error {
 }
 
 func (a *Agent) setupServer() error {
-	authorizer, err := auth.New(a.Config.ACLModelFile, a.Config.ACLModelFile)
+	authorizer, err := auth.New(a.Config.ACLModelFile, a.Config.ACLPolicyFile)
 	if err != nil {
 		return err
 	}

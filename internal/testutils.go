@@ -21,11 +21,11 @@ func testRootDir() string {
 
 // GetTempFile creates a file in the temporary 'dir'.
 // If 'dir' is "", a random dir name will be assigned.
-func GetTempFile(dir, filename string) *os.File {
+func GetTempFile(t *testing.T, dir, filename string) *os.File {
 	// make sure that a random dir is generated if none specified
 	if dir == "" {
 		dirName := randDirName()
-		dir = GetTempDir(dirName)
+		dir = GetTempDir(t, dirName)
 	} else {
 		dir = path.Join(testRootDir(), dir)
 	}
@@ -34,16 +34,20 @@ func GetTempFile(dir, filename string) *os.File {
 	if err != nil {
 		panic(err)
 	}
+
+	t.Logf("created file %q", f.Name())
 	return f
 }
 
 // GetTempDir creates a temporary directory 'dir'.
 // if the 'dir' string includes '*', those will be replaced with a random string.
-func GetTempDir(dir string) string {
+func GetTempDir(t *testing.T, dir string) string {
 	dirPath, err := os.MkdirTemp(testRootDir(), dir)
 	if err != nil {
 		panic(err)
 	}
+
+	t.Logf("testutil: created dir %q", dirPath)
 	return dirPath
 }
 
@@ -62,7 +66,9 @@ func FreePort(t *testing.T) int {
 			continue
 		}
 
-		return l.Addr().(*net.TCPAddr).Port
+		port := l.Addr().(*net.TCPAddr).Port
+		t.Logf("testutil: returned free TCP port '%d'", port)
+		return port
 	}
 
 	t.Error("could not determine a free port")

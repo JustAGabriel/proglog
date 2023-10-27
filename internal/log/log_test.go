@@ -26,7 +26,7 @@ func TestLog(t *testing.T) {
 
 	for scenario, fn := range scenarios {
 		testFn := func(t *testing.T) {
-			dir := internal.GetTempDir("store-test")
+			dir := internal.GetTempDir(t, "store-test")
 			defer os.RemoveAll(dir)
 
 			log, err := NewLog(dir, config)

@@ -70,7 +70,7 @@ func testReadAt(t *testing.T, s *store) {
 }
 
 func TestStoreClose(t *testing.T) {
-	f := internal.GetTempFile("", "store_close_test")
+	f := internal.GetTempFile(t, "", "store_close_test")
 	defer os.Remove(f.Name())
 
 	s, err := newStore(f)

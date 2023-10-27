@@ -11,7 +11,7 @@ import (
 )
 
 func TestSegment(t *testing.T) {
-	dir := internal.GetTempDir("segment-test")
+	dir := internal.GetTempDir(t, "segment-test")
 	defer os.RemoveAll(dir)
 
 	want := &api.Record{

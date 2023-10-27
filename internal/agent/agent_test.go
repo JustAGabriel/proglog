@@ -41,7 +41,7 @@ func TestAgent(t *testing.T) {
 		bindAddr := fmt.Sprintf("%s:%d", "127.0.0.1", bindPort)
 		rpcPort := internal.FreePort(t)
 
-		dataDir := internal.GetTempDir("agent-test-log")
+		dataDir := internal.GetTempDir(t, "agent-test-log")
 
 		var startJoinAddr []string
 		if i != 0 {

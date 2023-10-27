@@ -72,7 +72,7 @@ func setupTest(t *testing.T, fn func(*Config)) (rootClient api.LogClient, nobody
 	require.NoError(t, err)
 	serverCreds := credentials.NewTLS(serverTLSConfig)
 
-	dir := internal.GetTempDir("server-test")
+	dir := internal.GetTempDir(t, "server-test")
 	clog, err := log.NewLog(dir, log.Config{})
 	require.NoError(t, err)
 
@@ -81,10 +81,10 @@ func setupTest(t *testing.T, fn func(*Config)) (rootClient api.LogClient, nobody
 
 	var telemetryExporter *exporter.LogExporter
 	if *debug {
-		metricsLogFile := internal.GetTempFile("", "metrics-*.log")
+		metricsLogFile := internal.GetTempFile(t, "", "metrics-*.log")
 		t.Logf("metrics log file: %q", metricsLogFile.Name())
 
-		tracesLogFile := internal.GetTempFile("", "traces-*.log")
+		tracesLogFile := internal.GetTempFile(t, "", "traces-*.log")
 		t.Logf("traces log file: %q", metricsLogFile.Name())
 
 		telemetryExporter, err = exporter.NewLogExporter(exporter.Options{
@@ -306,7 +306,7 @@ func TestServerRequiresClientTLSCert(t *testing.T) {
 	require.NoError(t, err)
 	serverCreds := credentials.NewTLS(serverTLSConfig)
 
-	dir := internal.GetTempDir("server-test")
+	dir := internal.GetTempDir(t, "server-test")
 	clog, err := log.NewLog(dir, log.Config{})
 	require.NoError(t, err)
 

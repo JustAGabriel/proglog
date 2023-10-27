@@ -10,7 +10,7 @@ import (
 )
 
 func TestIndex(t *testing.T) {
-	f := internal.GetTempFile("", "index_test")
+	f := internal.GetTempFile(t, "", "index_test")
 	defer os.Remove(f.Name())
 
 	c := Config{}

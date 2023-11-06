@@ -17,7 +17,7 @@ import (
 )
 
 func TestAgent(t *testing.T) {
-	serverTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
+	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.ServerCertFile,
 		KeyFile:       config.ServerKeyFile,
 		CAFile:        config.CAFile,
@@ -26,7 +26,7 @@ func TestAgent(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	peerTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
+	peerTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.RootClientCertFile,
 		KeyFile:       config.RootClientKeyFile,
 		CAFile:        config.CAFile,

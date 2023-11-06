@@ -62,7 +62,7 @@ func setupTest(t *testing.T, fn func(*Config)) (rootClient api.LogClient, nobody
 	l, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
 
-	serverTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
+	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.ServerCertFile,
 		KeyFile:       config.ServerKeyFile,
 		CAFile:        config.CAFile,
@@ -112,7 +112,7 @@ func setupTest(t *testing.T, fn func(*Config)) (rootClient api.LogClient, nobody
 	}()
 
 	newClient := func(crtPath, keyPath string) (*grpc.ClientConn, api.LogClient, []grpc.DialOption) {
-		clientTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
+		clientTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 			CertFile: crtPath,
 			KeyFile:  keyPath,
 			CAFile:   config.CAFile,
@@ -296,7 +296,7 @@ func TestServerRequiresClientTLSCert(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
 
-	serverTLSConfig, err := config.SetupTLSConfig(config.TlSConfig{
+	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.ServerCertFile,
 		KeyFile:       config.ServerKeyFile,
 		CAFile:        config.CAFile,

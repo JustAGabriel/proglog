@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-type TlSConfig struct {
+type TLSConfig struct {
 	CertFile      string
 	KeyFile       string
 	CAFile        string
@@ -15,7 +15,7 @@ type TlSConfig struct {
 	Server        bool
 }
 
-func SetupTLSConfig(cfg TlSConfig) (*tls.Config, error) {
+func SetupTLSConfig(cfg TLSConfig) (*tls.Config, error) {
 	tlsConfig := &tls.Config{}
 	var err error
 

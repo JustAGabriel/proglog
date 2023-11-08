@@ -68,6 +68,7 @@ func (r *Replicator) replicate(addr string, leave chan struct{}) {
 				r.logError(err, "failed to receive", addr)
 				return
 			}
+			r.logger.Sugar().Debugf("received record: %+v")
 			records <- recv.Record
 		}
 	}()

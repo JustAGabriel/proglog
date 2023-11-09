@@ -9,6 +9,7 @@ import (
 	"github.com/justagabriel/proglog/internal/auth"
 	"github.com/justagabriel/proglog/internal/discovery"
 	"github.com/justagabriel/proglog/internal/log"
+	"github.com/justagabriel/proglog/internal/replicator"
 	"github.com/justagabriel/proglog/internal/server"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -24,7 +25,7 @@ type Agent struct {
 	log        *log.Log
 	server     *grpc.Server
 	membership *discovery.Membership
-	replicator *log.Replicator
+	replicator *replicator.Replicator
 
 	shutdown     bool
 	shutdowns    chan struct{}
@@ -155,7 +156,7 @@ func (a *Agent) setupMembership() error {
 	}
 
 	client := api.NewLogClient(conn)
-	a.replicator = &log.Replicator{
+	a.replicator = &replicator.Replicator{
 		DialOptions: opts,
 		LocalServer: client,
 	}

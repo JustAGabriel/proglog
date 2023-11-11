@@ -4,12 +4,15 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	api "github.com/justagabriel/proglog/api/v1"
+	"github.com/justagabriel/proglog/internal/config"
 	"github.com/justagabriel/proglog/internal/server"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func TestReplicator(t *testing.T) {
@@ -25,7 +28,12 @@ func TestReplicator(t *testing.T) {
 		},
 	}
 
-	server1Client, _, _, teardownServer1 := server.SetupTest(t, nil, nil)
+	falsePtr := new(bool)
+	*falsePtr = false
+
+	server1Setup := server.SetupTest(t, nil, falsePtr)
+
+	server1Client := server1Setup.AuthorizedClient
 	ctx := context.Background()
 	createStream, err := server1Client.CreateStream(ctx)
 	require.NoError(t, err)
@@ -44,28 +52,60 @@ func TestReplicator(t *testing.T) {
 		}
 	}
 
-	server2Client, _, server2Config, teardownServer2 := server.SetupTest(t, nil, nil)
-	getStream, err := server1Client.GetStream(ctx)
+	server2Setup := server.SetupTest(t, nil, falsePtr)
+	server2Client := server2Setup.AuthorizedClient
+
+	peerTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
+		CertFile:      config.RootClientCertFile,
+		KeyFile:       config.RootClientKeyFile,
+		CAFile:        config.CAFile,
+		ServerAddress: "127.0.0.1",
+		Server:        false,
+	})
+
+	creds := credentials.NewTLS(peerTLSConfig)
+	logger, err := zap.NewDevelopment()
 	require.NoError(t, err)
 
 	replicator := Replicator{
-		DialOptions: []grpc.DialOption{},
-		LocalServer: nil,
-		logger:      &zap.Logger{},
+		DialOptions: []grpc.DialOption{grpc.WithTransportCredentials(creds)},
+		LocalServer: server2Client,
+		logger:      logger,
 		mtx:         sync.Mutex{},
 		servers:     map[string]chan struct{}{},
 		closed:      false,
 		close:       make(chan struct{}),
 	}
-	// setup second log server
-	// create replicator
-	// connect replicator to second server
-	// configure replicator to replicate from frist server
+
+	replicatedServerName := "server1"
 
 	// act
+	replicator.Join(replicatedServerName, server1Setup.LogServerAddr)
 
-	//assert
-	// get record created in first server by requesting from second server
-	teardownServer1()
-	teardownServer2()
+	// //assert
+	time.Sleep(3 * time.Second)
+	// replicator.Leave(replicatedServerName)
+
+	// getStream, err := server2Client.GetStream(ctx)
+	// require.NoError(t, err)
+	// for offset, record := range records {
+	// 	getReq := &api.GetRecordRequest{
+	// 		Offset: uint64(offset),
+	// 	}
+	// 	err = getStream.Send(getReq)
+	// 	require.NoError(t, err)
+
+	// 	getResp, err := getStream.Recv()
+	// 	require.NoError(t, err)
+	// 	if getResp.Record.Offset != uint64(offset) {
+	// 		t.Fatalf("got offset: %d, want: %d", getResp.Record.Offset, offset)
+	// 	}
+
+	// 	givenRecordValue := string(getResp.Record.Value)
+	// 	expectedRecordValue := string(record.Value)
+	// 	require.EqualValues(t, expectedRecordValue, givenRecordValue)
+	// }
+
+	server1Setup.Teardown()
+	server1Setup.Teardown()
 }

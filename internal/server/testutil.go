@@ -16,19 +16,42 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// LogServerTestSetup contains all entities necessary to create a test for a LogServer.
+type LogServerTestSetup struct {
+	// AuthorizedClient is an authenicated grpc client, able to communicate with the created server.
+	AuthorizedClient api.LogClient
+
+	// UnauthorizedClient is an authenicated grpc client, unable to communicate with the created server.
+	UnauthorizedClient api.LogClient
+
+	// Config represents internal LogServer entities.
+	Config *Config
+
+	// Teardown will release all resources bound to the test server instance.
+	Teardown func()
+
+	// LogServerAddr contains the address under which the LogServer is reachable.
+	LogServerAddr string
+}
+
 // SetupTest creates a new 'Log' server and returns an authorized and an unauthorized client of it
 // additionally the config of the server itself, and a teardown function is returned.
-func SetupTest(t *testing.T, fn func(*Config), isDebugMode *bool) (rootClient api.LogClient, nobodyClient api.LogClient, cfg *Config, teardown func()) {
+func SetupTest(t *testing.T, fn func(*Config), isDebugMode *bool) LogServerTestSetup {
 	t.Helper()
 
-	l, err := net.Listen("tcp", "localhost:0")
+	setup := LogServerTestSetup{}
+
+	listener, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
+
+	serverAddr := listener.Addr().String()
+	setup.LogServerAddr = serverAddr
 
 	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.ServerCertFile,
 		KeyFile:       config.ServerKeyFile,
 		CAFile:        config.CAFile,
-		ServerAddress: l.Addr().String(),
+		ServerAddress: serverAddr,
 		Server:        true,
 	})
 	require.NoError(t, err)
@@ -59,18 +82,18 @@ func SetupTest(t *testing.T, fn func(*Config), isDebugMode *bool) (rootClient ap
 		require.NoError(t, err)
 	}
 
-	cfg = &Config{
+	setup.Config = &Config{
 		CommitLog:  clog,
 		Authorizer: authorizer,
 	}
 	if fn != nil {
-		fn(cfg)
+		fn(setup.Config)
 	}
-	server, err := NewGRPCServer(cfg, grpc.Creds(serverCreds))
+	server, err := NewGRPCServer(setup.Config, grpc.Creds(serverCreds))
 	require.NoError(t, err)
 
 	go func() {
-		server.Serve(l)
+		server.Serve(listener)
 	}()
 
 	newClient := func(crtPath, keyPath string) (*grpc.ClientConn, api.LogClient, []grpc.DialOption) {
@@ -83,7 +106,7 @@ func SetupTest(t *testing.T, fn func(*Config), isDebugMode *bool) (rootClient ap
 
 		clientCreds := credentials.NewTLS(clientTLSConfig)
 		opts := []grpc.DialOption{grpc.WithTransportCredentials(clientCreds)}
-		cc, err := grpc.Dial(l.Addr().String(), opts...)
+		cc, err := grpc.Dial(listener.Addr().String(), opts...)
 		require.NoError(t, err)
 
 		client := api.NewLogClient(cc)
@@ -93,11 +116,13 @@ func SetupTest(t *testing.T, fn func(*Config), isDebugMode *bool) (rootClient ap
 	rootConn, rootClient, _ := newClient(config.RootClientCertFile, config.RootClientKeyFile)
 	nobodyConn, nobodyClient, _ := newClient(config.NobodyClientCertFile, config.NobodyClientKeyFile)
 
-	return rootClient, nobodyClient, cfg, func() {
+	setup.AuthorizedClient = rootClient
+	setup.UnauthorizedClient = nobodyClient
+	setup.Teardown = func() {
 		server.Stop()
 		rootConn.Close()
 		nobodyConn.Close()
-		l.Close()
+		listener.Close()
 		clog.Remove()
 
 		if telemetryExporter != nil {
@@ -106,4 +131,6 @@ func SetupTest(t *testing.T, fn func(*Config), isDebugMode *bool) (rootClient ap
 			telemetryExporter.Close()
 		}
 	}
+
+	return setup
 }

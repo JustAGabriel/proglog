@@ -46,9 +46,9 @@ func TestServer(t *testing.T) {
 
 	for title, scenario := range scenarios {
 		t.Run(title, func(t *testing.T) {
-			authorizedClient, unauthorizedClient, config, teardown := SetupTest(t, nil, debug)
-			defer teardown()
-			scenario(t, authorizedClient, unauthorizedClient, config)
+			testSetup := SetupTest(t, nil, debug)
+			defer testSetup.Teardown()
+			scenario(t, testSetup.AuthorizedClient, testSetup.UnauthorizedClient, testSetup.Config)
 		})
 	}
 }

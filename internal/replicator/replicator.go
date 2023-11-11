@@ -50,18 +50,9 @@ func (r *Replicator) replicate(addr string, leave chan struct{}) {
 	client := api.NewLogClient(clientConn)
 	ctx := context.Background()
 
-	// stream, err := client.GetStream(ctx)
-	// stream.Send(&api.GetRecordRequest{
-	// 	Offset: 0,
-	// })
-
-	// if err != nil {
-	// 	r.logError(err, "failed to consume", addr)
-	// 	return
-	// }
-
 	records := make(chan *api.Record)
 	go func() {
+		// todo: use stream to prevent connection buildup overhead
 		getReq := api.GetRecordRequest{Offset: 0}
 
 		for {

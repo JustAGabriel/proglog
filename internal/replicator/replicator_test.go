@@ -62,6 +62,7 @@ func TestReplicator(t *testing.T) {
 		ServerAddress: "127.0.0.1",
 		Server:        false,
 	})
+	require.NoError(t, err)
 
 	creds := credentials.NewTLS(peerTLSConfig)
 	logger, err := zap.NewDevelopment()
@@ -84,27 +85,26 @@ func TestReplicator(t *testing.T) {
 
 	// //assert
 	time.Sleep(3 * time.Second)
-	// replicator.Leave(replicatedServerName)
 
-	// getStream, err := server2Client.GetStream(ctx)
-	// require.NoError(t, err)
-	// for offset, record := range records {
-	// 	getReq := &api.GetRecordRequest{
-	// 		Offset: uint64(offset),
-	// 	}
-	// 	err = getStream.Send(getReq)
-	// 	require.NoError(t, err)
+	getStream, err := server2Client.GetStream(ctx)
+	require.NoError(t, err)
+	for offset, record := range records {
+		getReq := &api.GetRecordRequest{
+			Offset: uint64(offset),
+		}
+		err = getStream.Send(getReq)
+		require.NoError(t, err)
 
-	// 	getResp, err := getStream.Recv()
-	// 	require.NoError(t, err)
-	// 	if getResp.Record.Offset != uint64(offset) {
-	// 		t.Fatalf("got offset: %d, want: %d", getResp.Record.Offset, offset)
-	// 	}
+		getResp, err := getStream.Recv()
+		require.NoError(t, err)
+		if getResp.Record.Offset != uint64(offset) {
+			t.Fatalf("got offset: %d, want: %d", getResp.Record.Offset, offset)
+		}
 
-	// 	givenRecordValue := string(getResp.Record.Value)
-	// 	expectedRecordValue := string(record.Value)
-	// 	require.EqualValues(t, expectedRecordValue, givenRecordValue)
-	// }
+		givenRecordValue := string(getResp.Record.Value)
+		expectedRecordValue := string(record.Value)
+		require.EqualValues(t, expectedRecordValue, givenRecordValue)
+	}
 
 	server1Setup.Teardown()
 	server1Setup.Teardown()

@@ -54,23 +54,40 @@ func (r *Replicator) replicate(addr string, leave chan struct{}) {
 	client := api.NewLogClient(clientConn)
 	ctx := context.Background()
 
+	stream, err := client.GetStream(ctx)
+	if err != nil {
+		r.logError(err, "failed to create 'get' stream", addr)
+		return
+	}
+
+	getReq := &api.GetRecordRequest{Offset: 0}
+	err = stream.Send(getReq)
+	if err != nil {
+		r.logError(err, "failed to send 'get' req", addr)
+		return
+	}
+
 	records := make(chan *api.Record)
 	go func() {
-		// todo: use stream to prevent connection buildup overhead
-		getReq := api.GetRecordRequest{Offset: 0}
-
 		for {
-			resp, err := client.Get(ctx, &getReq)
+			recv, err := stream.Recv()
 			if err != nil {
 				msg := fmt.Sprintf("failed to receive from %q", addr)
 				r.logError(err, msg, addr)
 				time.Sleep(1 * time.Second)
 				continue
 			}
-			r.logger.Sugar().Debugf("received record (from %q): %+v", addr, resp.Record)
-			records <- resp.Record
+
+			r.logger.Sugar().Debugf("received record (from %q): %+v", addr, recv.Record)
+			records <- recv.Record
+
 			nextOffset := getReq.Offset + 1
-			getReq = api.GetRecordRequest{Offset: nextOffset}
+			getReq = &api.GetRecordRequest{Offset: nextOffset}
+			err = stream.Send(getReq)
+			if err != nil {
+				r.logError(err, "failed to send 'get' req", addr)
+				return
+			}
 		}
 	}()
 

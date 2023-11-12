@@ -2,7 +2,9 @@ package replicator
 
 import (
 	"context"
+	"fmt"
 	"sync"
+	"time"
 
 	api "github.com/justagabriel/proglog/api/v1"
 	"go.uber.org/zap"
@@ -40,6 +42,8 @@ func (r *Replicator) Join(name, addr string) error {
 }
 
 func (r *Replicator) replicate(addr string, leave chan struct{}) {
+	r.logger.Sugar().Debugf("replicating addr: %q", addr)
+
 	clientConn, err := grpc.Dial(addr, r.DialOptions...)
 	if err != nil {
 		r.logError(err, "failed to dial", addr)
@@ -58,10 +62,12 @@ func (r *Replicator) replicate(addr string, leave chan struct{}) {
 		for {
 			resp, err := client.Get(ctx, &getReq)
 			if err != nil {
-				r.logError(err, "failed to receive", addr)
-				return
+				msg := fmt.Sprintf("failed to receive from %q", addr)
+				r.logError(err, msg, addr)
+				time.Sleep(1 * time.Second)
+				continue
 			}
-			r.logger.Sugar().Debugf("received record: %+v", resp.Record)
+			r.logger.Sugar().Debugf("received record (from %q): %+v", addr, resp.Record)
 			records <- resp.Record
 			nextOffset := getReq.Offset + 1
 			getReq = api.GetRecordRequest{Offset: nextOffset}

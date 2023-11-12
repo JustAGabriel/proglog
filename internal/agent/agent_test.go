@@ -75,7 +75,6 @@ func TestAgent(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	leaderClient := client(t, agents[0], peerTLSConfig)
-
 	createReq := api.CreateRecordRequest{
 		Record: &api.Record{
 			Value: []byte("foo"),
@@ -89,7 +88,6 @@ func TestAgent(t *testing.T) {
 	}
 	getResp, err := leaderClient.Get(context.Background(), &getReq)
 	require.NoError(t, err)
-
 	require.Equal(t, getResp.Record.Value, createReq.Record.Value)
 
 	time.Sleep(3 * time.Second)

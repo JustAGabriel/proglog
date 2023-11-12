@@ -128,6 +128,8 @@ func (a *Agent) setupServer() error {
 		return err
 	}
 
+	zap.L().Sugar().Debugf("running server at: %q", listener.Addr().String())
+
 	go func() {
 		err := a.server.Serve(listener)
 		if err != nil {

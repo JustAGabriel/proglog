@@ -65,7 +65,7 @@ func (l *Log) setup() error {
 		return baseOffsets[i] < baseOffsets[j]
 	})
 
-	for idx, _ := range baseOffsets {
+	for idx := range baseOffsets {
 		if err = l.newSegment(baseOffsets[idx]); err != nil {
 			return err
 		}

@@ -1,10 +1,11 @@
 module github.com/justagabriel/proglog
 
-go 1.20
+go 1.21
 
 require (
 	github.com/casbin/casbin/v2 v2.77.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
+	github.com/hashicorp/raft v1.5.0
 	github.com/hashicorp/serf v0.10.1
 	github.com/stretchr/testify v1.8.4
 	go.opencensus.io v0.24.0
@@ -32,7 +33,6 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.5 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/memberlist v0.5.0 // indirect
-	github.com/hashicorp/raft v1.5.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect

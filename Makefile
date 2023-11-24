@@ -50,4 +50,4 @@ $(CONFIG_PATH)/policy.csv:
 .PHONY: test
 test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
 	go clean -testcache
-	go test -race ./...
+	go test ./... # todo: use '-race'

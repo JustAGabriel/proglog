@@ -20,7 +20,7 @@ import (
 
 // Agent encapsulates all components of a Node.
 type Agent struct {
-	Config
+	Config Config
 
 	log        *log.Log
 	server     *grpc.Server
@@ -92,7 +92,7 @@ func (a *Agent) setupLogger() error {
 
 func (a *Agent) setupLog() error {
 	var err error
-	a.log, err = log.NewLog(a.DataDir, log.Config{})
+	a.log, err = log.NewLog(a.Config.DataDir, log.Config{})
 	return err
 }
 
@@ -118,7 +118,7 @@ func (a *Agent) setupServer() error {
 		return err
 	}
 
-	rpcAddr, err := a.RPCAddr()
+	rpcAddr, err := a.Config.RPCAddr()
 	if err != nil {
 		return err
 	}
@@ -147,8 +147,8 @@ func (a *Agent) setupMembership() error {
 	}
 
 	var opts []grpc.DialOption
-	if a.PeerTLSConfig != nil {
-		creds := credentials.NewTLS(a.PeerTLSConfig)
+	if a.Config.PeerTLSConfig != nil {
+		creds := credentials.NewTLS(a.Config.PeerTLSConfig)
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	}
 
@@ -164,12 +164,12 @@ func (a *Agent) setupMembership() error {
 	}
 
 	discoveryConfig := discovery.Config{
-		NodeName: a.NodeName,
-		BindAddr: a.BindAddr,
+		NodeName: a.Config.NodeName,
+		BindAddr: a.Config.BindAddr,
 		Tags: map[string]string{
 			"rpc_addr": rpcAddr,
 		},
-		StartJoinAddrs: a.StartJoinAddr,
+		StartJoinAddrs: a.Config.StartJoinAddr,
 	}
 	a.membership, err = discovery.New(a.replicator, discoveryConfig)
 	return err

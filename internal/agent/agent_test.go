@@ -14,14 +14,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 )
 
 func TestAgent(t *testing.T) {
+	host := "localhost" // todo: check why "127.0.0.1" doesn't work
 	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.ServerCertFile,
 		KeyFile:       config.ServerKeyFile,
 		CAFile:        config.CAFile,
-		ServerAddress: "127.0.0.1",
+		ServerAddress: host,
 		Server:        true,
 	})
 	require.NoError(t, err)
@@ -30,7 +32,7 @@ func TestAgent(t *testing.T) {
 		CertFile:      config.RootClientCertFile,
 		KeyFile:       config.RootClientKeyFile,
 		CAFile:        config.CAFile,
-		ServerAddress: "127.0.0.1",
+		ServerAddress: host,
 		Server:        false,
 	})
 	require.NoError(t, err)
@@ -38,7 +40,7 @@ func TestAgent(t *testing.T) {
 	var agents []*Agent
 	for i := 0; i < 3; i++ {
 		bindPort := internal.FreePort(t)
-		bindAddr := fmt.Sprintf("%s:%d", "127.0.0.1", bindPort)
+		bindAddr := fmt.Sprintf("%s:%d", host, bindPort)
 		rpcPort := internal.FreePort(t)
 
 		dataDir := internal.GetTempDir(t, "agent-test-log")
@@ -48,6 +50,7 @@ func TestAgent(t *testing.T) {
 			startJoinAddr = append(startJoinAddr, agents[0].Config.BindAddr)
 		}
 
+		isLeader := i == 0
 		agent, err := New(Config{
 			ServerTLSConfig: serverTLSConfig,
 			PeerTLSConfig:   peerTLSConfig,
@@ -58,6 +61,7 @@ func TestAgent(t *testing.T) {
 			StartJoinAddr:   startJoinAddr,
 			ACLModelFile:    config.ACLModelFile,
 			ACLPolicyFile:   config.ACLPolicyFile,
+			Bootstrap:       isLeader,
 		})
 		require.NoError(t, err)
 
@@ -96,6 +100,16 @@ func TestAgent(t *testing.T) {
 	getResp2, err := followerClient.Get(context.Background(), &getReq)
 	require.NoError(t, err)
 	require.Equal(t, getResp2.Record.Value, createReq.Record.Value)
+
+	getReqOutOfBounds := api.GetRecordRequest{
+		Offset: createResp.GetOffset() + 1,
+	}
+	getRespOutOfBounds, err := leaderClient.Get(context.Background(), &getReqOutOfBounds)
+	require.Nil(t, getRespOutOfBounds)
+	require.Error(t, err)
+	got := status.Code(err)
+	want := status.Code(api.ErrOffsetOutOfRange{}.GRPCStatus().Err())
+	require.Equal(t, got, want)
 }
 
 func client(t *testing.T, agent *Agent, tlsConfig *tls.Config) api.LogClient {

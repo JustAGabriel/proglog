@@ -27,9 +27,25 @@ message GetRecordResponse {
 	Record record = 1;
 }
 
+message GetServersRequest {
+
+}
+
+message Server {
+    string id = 1;
+    string rpc_addr = 2;
+    bool is_leader = 3;
+}
+
+message GetServersResponse {
+    repeated Server servers = 1;
+}
+
+
 service Log {
     rpc Create(CreateRecordRequest) returns (CreateRecordResponse) {}
     rpc CreateStream(stream CreateRecordRequest) returns (stream CreateRecordResponse){}
     rpc Get(GetRecordRequest) returns (GetRecordResponse){}
     rpc GetStream(stream GetRecordRequest) returns (stream GetRecordResponse){}
+    rpc GetServers(GetServersRequest) returns (GetServersResponse){}
 }

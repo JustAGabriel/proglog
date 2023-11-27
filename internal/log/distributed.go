@@ -218,12 +218,30 @@ func (l *DistributedLog) WaitForLeader(timeout time.Duration) error {
 	}
 }
 
+// Close disconnects from the Raft cluster and shut's down the replication service.
 func (l *DistributedLog) Close() error {
 	f := l.raft.Shutdown()
 	if err := f.Error(); err != nil {
 		return err
 	}
 	return l.log.Close()
+}
+
+// GetServers returns information about all servers of the app.
+func (l *DistributedLog) GetServers() ([]*api.Server, error) {
+	future := l.raft.GetConfiguration()
+	if err := future.Error(); err != nil {
+		return nil, err
+	}
+	var servers []*api.Server
+	for _, srv := range future.Configuration().Servers {
+		servers = append(servers, &api.Server{
+			Id:       string(srv.ID),
+			RpcAddr:  string(srv.Address),
+			IsLeader: l.raft.Leader() == srv.Address,
+		})
+	}
+	return servers, nil
 }
 
 type RequestType uint8

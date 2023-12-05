@@ -51,3 +51,7 @@ $(CONFIG_PATH)/policy.csv:
 test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
 	go clean -testcache
 	go test ./... # todo: use '-race'
+
+TAG ?= 0.0.1
+build-docker:
+	docker build -t github.com/justagabriel/proglog:$(TAG) .

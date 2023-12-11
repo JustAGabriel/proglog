@@ -59,3 +59,4 @@ build-docker:
 build-k8:
 	kind create cluster
 	kind load docker-image github.com/justagabriel/proglog:$(TAG)
+	helm install proglog deploy/proglog

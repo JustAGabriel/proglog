@@ -55,3 +55,7 @@ test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
 TAG ?= 0.0.1
 build-docker:
 	docker build -t github.com/justagabriel/proglog:$(TAG) .
+
+build-k8:
+	kind create cluster
+	kind load docker-image github.com/justagabriel/proglog:$(TAG)

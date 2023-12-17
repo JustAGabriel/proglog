@@ -53,7 +53,7 @@ func extractDirPath(path, dir string) (string, error) {
 }
 
 func configFile(path ...string) string {
-	if dir := os.Getenv("CONFIG-DIR"); dir != "" {
+	if dir := os.Getenv("CONFIG_DIR"); dir != "" {
 		path = append([]string{dir}, path...)
 		return filepath.Join(path...)
 	}

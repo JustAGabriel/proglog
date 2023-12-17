@@ -34,6 +34,7 @@ gencert:
 
 .PHONY: compile
 compile:
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	protoc api/v1/*.proto \
 		--go_out=. \
 		--go-grpc_out=. \
@@ -57,8 +58,9 @@ build-docker:
 	docker build -t github.com/justagabriel/proglog:$(TAG) .
 
 build-k8:
-	kind delete cluster
+	kind delete cluster 
 	kind create cluster
 	kind load docker-image github.com/justagabriel/proglog:$(TAG)
 	helm install proglog deploy/proglog
+	sleep 10
 	kubectl port-forward pods/proglog-0 8400:8400

@@ -69,6 +69,9 @@ func (l *Log) setup() error {
 		if err = l.newSegment(baseOffsets[idx]); err != nil {
 			return err
 		}
+		// baseOffset contains dup for index and store so we skip
+		// the dup
+		idx++
 	}
 
 	if l.segments == nil {
@@ -157,7 +160,7 @@ func (l *Log) HighestOffset() (uint64, error) {
 	defer l.mu.RUnlock()
 
 	lastIdx := len(l.segments) - 1
-	off := l.segments[lastIdx].nextOffset - 1
+	off := l.segments[lastIdx].nextOffset
 	if off == 0 {
 		return 0, nil
 	}

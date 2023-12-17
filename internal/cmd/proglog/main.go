@@ -79,14 +79,15 @@ func (c *cli) setupConfig(cmd *cobra.Command, args []string) error {
 	viper.SetConfigFile(configFile)
 	if err = viper.ReadInConfig(); err != nil {
 		// it's ok if the file doesn't exist
-		if !errors.Is(err, viper.ConfigFileNotFoundError{}) {
+		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			return err
 		}
 	}
 
 	c.cfg.DataDir = viper.GetString("data-dir")
 	c.cfg.NodeName = viper.GetString("node-name")
-	c.cfg.BindAddr = viper.GetString("rpc-port")
+	c.cfg.RPCPort = viper.GetInt("rpc-port")
+	c.cfg.BindAddr = viper.GetString("bind-addr")
 	c.cfg.StartJoinAddr = viper.GetStringSlice("start-join-addrs")
 	c.cfg.Bootstrap = viper.GetBool("bootstrap")
 

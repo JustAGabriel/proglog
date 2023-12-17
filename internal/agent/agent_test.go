@@ -43,6 +43,7 @@ func TestAgent(t *testing.T) {
 		bindPort := internal.FreePort(t)
 		bindAddr := fmt.Sprintf("%s:%d", host, bindPort)
 		rpcPort := internal.FreePort(t)
+		t.Logf("test server: idx: %d, bindAddr: %s, rpcPort: %d", i, bindAddr, rpcPort)
 
 		dataDir := internal.GetTempDir(t, "agent-test-log")
 

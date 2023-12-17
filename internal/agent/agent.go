@@ -145,6 +145,7 @@ func (a *Agent) setupLog() error {
 	logConfig.Raft.BindAddr = rpcAddr
 	logConfig.Raft.LocalID = raft.ServerID(a.Config.NodeName)
 	logConfig.Raft.Bootstrap = a.Config.Bootstrap
+	logConfig.Raft.LeaderLeaseTimeout = 50 * time.Millisecond
 	a.log, err = log.NewDistributedLog(
 		a.Config.DataDir,
 		logConfig,

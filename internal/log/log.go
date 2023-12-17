@@ -162,7 +162,7 @@ func (l *Log) HighestOffset() (uint64, error) {
 		return 0, nil
 	}
 
-	return off, nil
+	return off - 1, nil
 }
 
 func (l *Log) Truncate(lowest uint64) error {

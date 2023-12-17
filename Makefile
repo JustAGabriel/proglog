@@ -57,6 +57,8 @@ build-docker:
 	docker build -t github.com/justagabriel/proglog:$(TAG) .
 
 build-k8:
+	kind delete cluster
 	kind create cluster
 	kind load docker-image github.com/justagabriel/proglog:$(TAG)
 	helm install proglog deploy/proglog
+	kubectl port-forward pods/proglog-0 8400:8400

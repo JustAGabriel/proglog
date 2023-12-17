@@ -46,9 +46,9 @@ func TestAgent(t *testing.T) {
 
 		dataDir := internal.GetTempDir(t, "agent-test-log")
 
-		var startJoinAddr []string
+		var startJoinAddrs []string
 		if i != 0 {
-			startJoinAddr = append(startJoinAddr, agents[0].Config.BindAddr)
+			startJoinAddrs = append(startJoinAddrs, agents[0].Config.BindAddr)
 		}
 
 		isLeader := i == 0
@@ -59,7 +59,7 @@ func TestAgent(t *testing.T) {
 			BindAddr:        bindAddr,
 			RPCPort:         rpcPort,
 			NodeName:        fmt.Sprintf("%d", i),
-			StartJoinAddr:   startJoinAddr,
+			StartJoinAddr:   startJoinAddrs,
 			ACLModelFile:    config.ACLModelFile,
 			ACLPolicyFile:   config.ACLPolicyFile,
 			Bootstrap:       isLeader,

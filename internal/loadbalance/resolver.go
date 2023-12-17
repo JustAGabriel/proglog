@@ -44,14 +44,25 @@ func (r *Resolver) ResolveNow(resolver.ResolveNowOptions) {
 		r.logger.Error("failed to resolve server", zap.Error(err))
 		return
 	}
+
+	var foundLeader bool
 	var addrs []resolver.Address
 	for _, server := range resp.Servers {
+		if server.IsLeader {
+			foundLeader = true
+		}
+
 		addr := resolver.Address{
 			Addr:       server.RpcAddr,
 			Attributes: attributes.New("is_leader", server.IsLeader),
 		}
 		addrs = append(addrs, addr)
 	}
+
+	if !foundLeader {
+		r.logger.Warn("no leader found")
+	}
+
 	resolverState := resolver.State{
 		Addresses:     addrs,
 		ServiceConfig: r.serviceConfig,

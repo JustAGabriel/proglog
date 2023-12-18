@@ -398,8 +398,8 @@ func (l *logStore) StoreLogs(records []*raft.Log) error {
 }
 
 // DeleteRange implements raft.LogStore.
-func (l *logStore) DeleteRange(min uint64, max uint64) error {
-	panic("unimplemented")
+func (l *logStore) DeleteRange(min, max uint64) error {
+	return l.Truncate(max)
 }
 
 var _ raft.StreamLayer = new(StreamLayer)

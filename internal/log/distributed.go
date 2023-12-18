@@ -40,11 +40,10 @@ func NewDistributedLog(dataDir string, config Config) (*DistributedLog, error) {
 
 func (l *DistributedLog) setupLog(dataDir string) error {
 	logDir := filepath.Join(dataDir, "log")
-	err := os.MkdirAll(logDir, 0775)
-	if err != nil {
+	if err := os.MkdirAll(logDir, 0755); err != nil {
 		return err
 	}
-
+	var err error
 	l.log, err = NewLog(logDir, l.config)
 	return err
 }
@@ -89,6 +88,13 @@ func (l *DistributedLog) setupRaft(dataDir string) error {
 
 	config := raft.DefaultConfig()
 	config.LocalID = l.config.Raft.LocalID
+
+	if l.config.Raft.HeartbeatTimeout != 0 {
+		config.HeartbeatTimeout = l.config.Raft.HeartbeatTimeout
+	}
+	if l.config.Raft.ElectionTimeout != 0 {
+		config.ElectionTimeout = l.config.Raft.ElectionTimeout
+	}
 	if l.config.Raft.LeaderLeaseTimeout != 0 {
 		config.LeaderLeaseTimeout = l.config.Raft.LeaderLeaseTimeout
 	}
@@ -144,8 +150,8 @@ func (l *DistributedLog) apply(reqType RequestType, req proto.Message) (interfac
 		return nil, err
 	}
 
-	timemout := 10 * time.Second
-	future := l.raft.Apply(buf.Bytes(), timemout)
+	timeout := 10 * time.Second
+	future := l.raft.Apply(buf.Bytes(), timeout)
 	if future.Error() != nil {
 		return nil, future.Error()
 	}
@@ -183,7 +189,7 @@ func (l *DistributedLog) Join(id, addr string) error {
 				// server has already joined
 				return nil
 			}
-			//remove existing server
+			// remove existing server
 			removeFuture := l.raft.RemoveServer(serverID, 0, 0)
 			if err := removeFuture.Error(); err != nil {
 				return err
@@ -253,8 +259,8 @@ const (
 // Apply implements raft.FSM.
 func (l *fsm) Apply(record *raft.Log) interface{} {
 	buf := record.Data
-	reqTyep := RequestType(buf[0])
-	switch reqTyep {
+	reqType := RequestType(buf[0])
+	switch reqType {
 	case AppendRequestType:
 		return l.applyAppend(buf[1:])
 	}
@@ -290,8 +296,8 @@ type snapshot struct {
 
 // Persist implements raft.FSMSnapshot.
 func (s *snapshot) Persist(sink raft.SnapshotSink) error {
-	_, err := io.Copy(sink, s.reader)
-	if err != nil {
+	if _, err := io.Copy(sink, s.reader); err != nil {
+		_ = sink.Cancel()
 		return err
 	}
 	return sink.Close()
@@ -313,27 +319,22 @@ func (f *fsm) Restore(r io.ReadCloser) error {
 		}
 
 		size := int64(enc.Uint64(b))
-		_, err = io.CopyN(&buf, r, size)
-		if err != nil {
+		if _, err = io.CopyN(&buf, r, size); err != nil {
 			return err
 		}
 
 		record := &api.Record{}
-		err = proto.Unmarshal(buf.Bytes(), record)
-		if err != nil {
+		if err = proto.Unmarshal(buf.Bytes(), record); err != nil {
 			return err
 		}
 
 		if i == 0 {
 			f.log.Config.Segment.InitialOffset = record.Offset
-			err = f.log.Reset()
-			if err != nil {
+			if err := f.log.Reset(); err != nil {
 				return err
 			}
 		}
-
-		_, err = f.log.Append(record)
-		if err != nil {
+		if _, err = f.log.Append(record); err != nil {
 			return err
 		}
 		buf.Reset()

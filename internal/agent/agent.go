@@ -104,13 +104,8 @@ func (a *Agent) setupLogger() error {
 }
 
 func (a *Agent) setupMux() error {
-	addr, err := net.ResolveTCPAddr("tcp", a.Config.BindAddr)
-	if err != nil {
-		return err
-	}
 	rpcAddr := fmt.Sprintf(
-		"%s:%d",
-		addr.IP.String(),
+		":%d",
 		a.Config.RPCPort,
 	)
 	ln, err := net.Listen("tcp", rpcAddr)

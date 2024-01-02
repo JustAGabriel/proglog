@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	api "github.com/justagabriel/proglog/api/v1"
 	"go.uber.org/zap"
@@ -37,37 +38,48 @@ func (r *Resolver) ResolveNow(resolver.ResolveNowOptions) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	client := api.NewLogClient(r.resolverConn)
-	// get cluster and then set on cc attributes
 	ctx := context.Background()
-	resp, err := client.GetServers(ctx, &api.GetServersRequest{})
-	if err != nil {
-		r.logger.Error("failed to resolve server", zap.Error(err))
-		return
-	}
 
-	var foundLeader bool
-	var addrs []resolver.Address
-	for _, server := range resp.Servers {
-		if server.IsLeader {
-			foundLeader = true
+	retries := 3
+	for i := 0; i < retries; i++ {
+		resp, err := client.GetServers(ctx, &api.GetServersRequest{})
+		if err != nil {
+			r.logger.Error("failed to resolve server", zap.Error(err))
+			return
 		}
 
-		addr := resolver.Address{
-			Addr:       server.RpcAddr,
-			Attributes: attributes.New("is_leader", server.IsLeader),
+		var foundLeader bool
+		var addrs []resolver.Address
+		for _, server := range resp.Servers {
+			if server.IsLeader {
+				foundLeader = true
+			}
+
+			addr := resolver.Address{
+				Addr:       server.RpcAddr,
+				Attributes: attributes.New("is_leader", server.IsLeader),
+			}
+			addrs = append(addrs, addr)
 		}
-		addrs = append(addrs, addr)
-	}
 
-	if !foundLeader {
-		r.logger.Warn("no leader found")
-	}
+		if !foundLeader {
+			isLastRetry := (i == (retries - 1))
+			if isLastRetry {
+				r.logger.Error("no leader found, no more retries")
+			} else {
+				r.logger.Warn("no leader found")
+			}
+			time.Sleep(time.Duration(i*300) * time.Millisecond)
+			continue
+		}
 
-	resolverState := resolver.State{
-		Addresses:     addrs,
-		ServiceConfig: r.serviceConfig,
+		resolverState := resolver.State{
+			Addresses:     addrs,
+			ServiceConfig: r.serviceConfig,
+		}
+		r.clientConn.UpdateState(resolverState)
+		break
 	}
-	r.clientConn.UpdateState(resolverState)
 }
 
 // Scheme implements resolver.Builder.
